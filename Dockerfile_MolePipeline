@@ -1,0 +1,102 @@
+FROM nvcr.io/nvidia/pytorch:22.06-py3
+
+# Set workspace directory
+WORKDIR /workspace
+
+# Install dependencies
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install tzdata
+RUN apt-get update && apt-get install -y nvidia-cuda-toolkit
+RUN apt-get update && apt-get -y install libxrender1
+RUN apt-get update && apt-get -y install libxext6
+RUN apt-get update && apt-get install -y \
+	openbabel \
+	&& rm -rf /var/lib/apt/lists/*
+RUN pip install rdkit
+RUN pip install PyYAML
+RUN pip install seaborn
+RUN pip install wandb
+RUN pip install dgl==1.1.2
+RUN pip install dgllife
+
+RUN apt-get update && apt-get install -y openssl
+RUN apt-get update && apt-get install -y zip
+
+# Install boost (vina gpu dependency)
+ARG BOOST_VERSION=1.83.0
+RUN cd /tmp && \
+    BOOST_VERSION_MOD=$(echo $BOOST_VERSION | tr . _) && \
+    wget https://archives.boost.io/release/1.83.0/source/boost_1_83_0.tar.bz2 && \
+    tar --bzip2 -xf boost_${BOOST_VERSION_MOD}.tar.bz2 && \
+    cp -r boost_${BOOST_VERSION_MOD} /workspace && \
+    cd boost_${BOOST_VERSION_MOD} && \
+    ./bootstrap.sh --prefix=/usr/local && \
+    ./b2 install && \
+    rm -rf /tmp/*
+    
+RUN apt-get update && \
+    apt-get install -y curl tar && \
+    rm -rf /var/lib/apt/lists/*
+
+# Download RAscore, MoleGuLAR
+RUN git clone https://github.com/reymond-group/RAscore
+RUN git clone https://github.com/devalab/MoleGuLAR
+RUN git clone https://github.com/ccsb-scripps/AutoDock-GPU
+
+# Install Vina
+RUN curl -L -o vina_1.2.5_linux_x86_64 https://github.com/ccsb-scripps/AutoDock-Vina/releases/download/v1.2.5/vina_1.2.5_linux_x86_64
+RUN chmod +x ./vina_1.2.5_linux_x86_64
+
+# Install mgltools
+RUN curl -L -o mgltools_x86_64Linux2_1.5.6.tar.gz https://ccsb.scripps.edu/mgltools/download/495/
+RUN tar -xzf mgltools_x86_64Linux2_1.5.6.tar.gz && rm mgltools_x86_64Linux2_1.5.6.tar.gz
+RUN cd /workspace/mgltools_x86_64Linux2_1.5.6 && ./install.sh
+RUN curl -L -o mgltools_x86_64Linux2_1.5.7.tar.gz https://ccsb.scripps.edu/mgltools/download/491/
+RUN tar -xzf mgltools_x86_64Linux2_1.5.7.tar.gz && rm mgltools_x86_64Linux2_1.5.7.tar.gz
+RUN cd /workspace/mgltools_x86_64Linux2_1.5.7 && ./install.sh
+COPY ./prepare_bias_modified.py /workspace/mgltools_x86_64Linux2_1.5.7/MGLToolsPckgs/AutoDockTools/Utilities24/contrib/adbias/prepare_bias.py
+
+# Install autogrid
+RUN git clone https://github.com/ccsb-scripps/AutoGrid 
+RUN cd AutoGrid  && autoreconf -i && make
+COPY ./test_molecule.pdbqt /workspace/Evaluation/test_molecule.pdbqt
+
+# Install Vina GPU
+COPY ./Vina-GPU-2.1-main.zip /workspace/vina-gpu.zip
+RUN apt-get install unzip
+RUN unzip vina-gpu.zip
+ENV GPU_INCLUDE_PATH=/usr/local/cuda/include
+ENV GPU_LIBRARY_PATH=/usr/local/cuda-11.6/compat/lib.real
+RUN ln -s /usr/local/cuda-11.7/lib64/libcudart.so /usr/lib/libcudart.so
+COPY ./Makefile /workspace/Vina-GPU-2.1-main/AutoDock-Vina-GPU-2.1
+RUN cd Vina-GPU-2.1-main/AutoDock-Vina-GPU-2.1 && make source
+RUN cp -r /workspace/Vina-GPU-2.1-main/AutoDock-Vina-GPU-2.1/OpenCL /workspace/Evaluation/OpenCL 
+
+# Install AutoDock GPU
+RUN cd AutoDock-GPU && make DEVICE=CUDA NUMWI=128 TARGETS="86"
+
+# Insert modified files into MoleGuLAR directory
+COPY ./GeneratorInterface.py /workspace/MoleGuLAR/Optimizer/GeneratorInterface.py
+COPY ./reinforcement_modified.py /workspace/MoleGuLAR/Optimizer/release/reinforcement.py
+COPY ./rewards_modified.py /workspace/MoleGuLAR/Optimizer/rewards.py
+
+# Insert modified RAscore files
+COPY ./RAscore_NN.py /workspace/RAscore/RAscore/RAscore_NN.py
+COPY ./synthi_weights.pth /workspace/RAscore/RAscore/models/synthi_weights.pth
+COPY ./SynthiInterface.py /workspace/Evaluation/SynthiInterface.py
+
+# Transfer other components
+COPY ./BuildFastsearch.py /workspace/Evaluation/BuildFastsearch.py
+COPY ./Main.py /workspace/Evaluation/Main.py
+COPY ./DatasetMaker.py /workspace/Evaluation/DatasetMaker.py
+COPY ./Visualization.py /workspace/Evaluation/Visualization.py
+COPY ./CandidateSelector.py /workspace/Evaluation/CandidateSelector.py
+COPY ./AnalogueSearcher.py /workspace/Evaluation/AnalogueSearcher.py
+COPY ./Screening.py /workspace/Evaluation/Screening.py
+COPY ./CandidateSelector2.py /workspace/Evaluation/CandidateSelector2.py
+COPY ./RandomSampler.py /workspace/Evaluation/RandomSampler.py
+
+# Transfer and activate entrypoint file
+COPY ./entrypoint.sh /workspace/entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+ENTRYPOINT ./entrypoint.sh
+
