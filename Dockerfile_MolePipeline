@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
 RUN pip install rdkit
 RUN pip install PyYAML
 RUN pip install seaborn
+RUN pip install "pydantic>=2.0"
 RUN pip install wandb
 RUN pip install dgl==1.1.2
 RUN pip install dgllife
