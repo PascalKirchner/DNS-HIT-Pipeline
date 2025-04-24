@@ -60,6 +60,7 @@ COPY ./prepare_bias_modified.py /workspace/mgltools_x86_64Linux2_1.5.7/MGLToolsP
 RUN apt-get update && apt-get install -y csh
 RUN git clone https://github.com/ccsb-scripps/AutoGrid 
 RUN cd AutoGrid  && autoreconf -i && ./configure && make
+RUN cp AutoGrid/autogrid4 /usr/local/bin/
 COPY ./test_molecule.pdbqt /workspace/Evaluation/test_molecule.pdbqt
 
 # Install Vina GPU

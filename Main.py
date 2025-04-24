@@ -523,7 +523,7 @@ Traceback:
         mgl_path = "/workspace/mgltools_x86_64Linux2_1.5.7/MGLToolsPckgs/AutoDockTools/Utilities24"
         preparebias_path = path.join(mgl_path, "contrib/adbias/prepare_bias.py")
         self.generate_gpf()
-        subprocess.run(["../AutoGrid/autogrid4", "-p", f"{self.config['protein']}.gpf"], check=True)
+        subprocess.run(["autogrid4", "-p", f"{self.config['protein']}.gpf"], check=True)
         if self.config["use_bias"]:
             subprocess.run([python_path, preparebias_path, "-b", f"{self.config['protein']}_bias.bpf", "-g",
                             f"{self.config['protein']}.gpf"], check=True)
