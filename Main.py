@@ -141,9 +141,10 @@ class Main:
         protein_run = path.abspath(path.join(script_dir, self.config["protein"] + ".pdb"))
         shutil.copy(protein_ext, protein_run)
         print("Copied protein structure.")
-        # subprocess.run(["obabel", f"{protein_path}", "-O", "with_hydrogen.pdb", "-h"], check=True)
-        subprocess.run([python_path, f"{mgl_path}/prepare_receptor4.py", "-r", f"{self.config['protein']}.pdb", "-o",
-                        f"{self.config['protein']}.pdbqt", "-U", "nphs_lps", "-v"], check=True)
+        subprocess.run(["obabel", f"{self.config['protein']}.pdb", "-O", f"{self.config['protein']}_withH.pdb",
+                        "-h"])
+        subprocess.run([python_path, f"{mgl_path}/prepare_receptor4.py", "-r", f"{self.config['protein']}_withH.pdb",
+                        "-o", f"{self.config['protein']}.pdbqt", "-U", "nphs_lps", "-v"], check=True)
         if self.config["dock_de_novo"] == "gpu4":
             self.create_grids()
         for filename in listdir(script_dir):
