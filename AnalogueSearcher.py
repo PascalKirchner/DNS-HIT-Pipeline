@@ -16,7 +16,8 @@ class NoLibraryFilesException(Exception):
 
 
 class AnalogueSearcher:
-    def __init__(self, candidate_file, analogue_file, lib_path, thresholds, analogue_mode, lib_prefix, no_cand=None):
+    def __init__(self, candidate_file, analogue_file, lib_path, thresholds, analogue_mode, lib_prefix, analogue_cap=50,
+                 match_rings=True, no_cand=None):
         self.candidate_file = candidate_file
         self.analogue_file = analogue_file
         self.library_path = lib_path
@@ -26,7 +27,8 @@ class AnalogueSearcher:
         self.analogue_mode = analogue_mode
         self.lib_prefix = lib_prefix
         self.no_cand = no_cand
-        self.analogue_cap = 50
+        self.analogue_cap = analogue_cap
+        self.match_rings = match_rings
         self.data_dict = dict()
 
     def load_smiles(self):
@@ -99,7 +101,7 @@ class AnalogueSearcher:
             scaf = murcko.GetScaffoldForMol(mol_original)
             max_common = rdFMCS.FindMCS((mol_original, analogue_mol), ringMatchesRingOnly=True)
             number_in_scaf = CalcNumHeavyAtoms(scaf)
-            if max_common.numAtoms >= number_in_scaf:
+            if max_common.numAtoms >= number_in_scaf or self.match_rings is False:
                 if tani > 0.5 or self.analogue_mode == "sub":
                     analogues.append(analogue_info)
         return analogues
@@ -151,7 +153,7 @@ class AnalogueSearcher:
                 if len(entry) > 0:
                     similars_for_smile.extend(entry)
             similars_for_smile.sort(key=lambda x: x[3], reverse=True)
-            if len(similars_for_smile) > self.analogue_cap:
+            if len(similars_for_smile) > self.analogue_cap != 0:
                 complete_len = len(similars_for_smile)
                 similars_for_smile = similars_for_smile[:self.analogue_cap]
                 print(f"Analogue list truncated from {complete_len} to {self.analogue_cap} with highest Tanimoto")

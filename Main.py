@@ -77,7 +77,9 @@ class Main:
                        "score_threshold": 0,
                        "bias_data": None,
                        "use_bias": False,
-                       "de_novo_multi_mol": 1}
+                       "de_novo_multi_mol": 1,
+                       "match_rings": True,
+                       "analogue_cap": 50}
         self.load_config()
         self.set_random_id()
         self.starting_point = 0
@@ -381,6 +383,8 @@ Traceback:
                                                 self.config["similarity_threshold2"]),
                                                self.config["analogue_mode"],
                                                self.config["lib_prefix"],
+                                               self.config["analogue_cap"],
+                                               self.config["match_rings"],
                                                self.config["n_of_candidates"])
         zs.evaluate_list()
         print(f"Finished analogue search (protein {self.config['protein']}; run {self.config['run_id']})")
