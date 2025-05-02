@@ -47,6 +47,7 @@ class Visualizer:
 
     def make_clean_data(self):
         data_clean = dict()
+        compounds_skipped = 0
         for entry in self.raw_data:
             try:
                 new_entry = dict()
@@ -57,9 +58,13 @@ class Visualizer:
                 new_entry["efficiency"] = float(entry[5])
                 new_entry["synthi"] = float(entry[6])
                 new_entry["smiles"] = entry[8]
+                if new_entry["affinity"] > 0:
+                    compounds_skipped += 1
+                    continue
                 data_clean[int(entry[0])] = new_entry
             except ValueError:
                 continue
+        print(f"{compounds_skipped} invalid compounds were skipped for visualization")
         self.clean_data = data_clean
 
     def make_path(self, output_type, extension=".txt"):
@@ -160,10 +165,13 @@ class Visualizer:
         g = seaborn.jointplot(x=section_data["x"], y=section_data["y"], hue=section_data["name"], kind="kde",
                               palette={"Early": "blue", "Late": "orange"})
         g.fig.suptitle("QED and logP distributions of early and late molecules" + warning)
-        plt.xlabel("Quantitative estimate of drug-likeness (QED)")
-        plt.ylabel("Octanol/water partition coefficient (logP)")
+        g.set_axis_labels("Octanol/water partition coefficient (logP)",
+                          "Quantitative estimate of drug-likeness (QED)")
+        if g.ax_joint.legend_:
+            g.ax_joint.legend_.set_title("Molecule generation slice")
+        g.fig.tight_layout()
         output_path = self.make_path("contour", extension=".svg")
-        plt.savefig(output_path)
+        g.fig.savefig(output_path, bbox_inches="tight")
 
     def make_weight_histogram(self):
         plt.close()
